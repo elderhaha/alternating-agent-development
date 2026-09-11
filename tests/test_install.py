@@ -29,8 +29,15 @@ class InstallTests(unittest.TestCase):
         for tool in ['.agents', '.claude']:
             found = list((self.home / tool / 'skills').rglob('SKILL.md'))
             self.assertEqual(len(found), 1)
-            self.assertIn(shared.as_posix(), found[0].read_text(encoding='utf-8'))
-            self.assertNotIn('@PROTOCOL_PATH@', found[0].read_text(encoding='utf-8'))
+            content = found[0].read_text(encoding='utf-8')
+            targets = re.findall(r'read the default protocol at `([^`]+)`', content)
+            self.assertEqual(len(targets), 1)
+            expected = shared / 'releases' / installer.VERSION / installer.NAME / 'SKILL.md'
+            # Windows CI may supply RUNNER~1 while the installer resolves runneradmin.
+            # Verify the actual file, including the pinned version, not path spelling.
+            self.assertTrue(expected.is_file())
+            self.assertTrue(Path(targets[0]).samefile(expected))
+            self.assertNotIn('@PROTOCOL_PATH@', content)
         for f in (ROOT / 'releases').rglob('*'):
             if f.is_file():
                 self.assertEqual(f.read_bytes(), (shared / f.relative_to(ROOT)).read_bytes())
